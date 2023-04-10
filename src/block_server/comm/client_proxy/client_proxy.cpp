@@ -6,6 +6,7 @@
 #include "block_server/comm/client_proxy/epoch_txn_queue_manager.h"
 #include "block_server/comm/client_proxy/epoch_transaction_buffer.h"
 #include "block_server/comm/client_proxy/user_collector.h"
+#include "block_server/worker/transaction_pre_executor.h"
 #include "common/concurrent_queue/light_weight_semaphore.hpp"
 #include "common/consume_time_calculator.h"
 #include "common/thread_pool.h"
@@ -145,7 +146,8 @@ void ClientProxy::receiveFromLocalServer() {
             std::string digest;
             sha256Helper.execute(&digest);
             transaction->setTransactionID(*reinterpret_cast<tid_size_t*>(digest.data()));
-            // enqueue transaction
+            // enqueue transaction (if it does not abort)
+            //if(TransactionPreExecutor::TransactionPreExecute(transaction)) //pre-execute transaction
             localTxBuffer.pushTransactionToBuffer(transaction);
         }
         // local server generate this information, no need to verify

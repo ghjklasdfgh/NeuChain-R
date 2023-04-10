@@ -13,7 +13,7 @@ ADD_EXECUTABLE(block_server
         ${SRC_BLOCK_SERVER_WORKER}
         ${SRC_BLOCK_SERVER_DATABASE}
         ${SRC_BLOCK_SERVER_TRANSACTION}
-        ${SRC_BLOCK_SERVER_RESERVE_TABLE})
+        ${SRC_BLOCK_SERVER_RESERVE_TABLE} worker/transaction_pre_executor.cpp)
 
 # Link the project libraries to the executable
 TARGET_LINK_LIBRARIES(block_server
