@@ -133,6 +133,9 @@ void ClientProxy::receiveFromLocalServer() {
         transactionSet.set_epoch(epoch);
         transactionSet.set_type(comm::TransactionsWithProof_Type_TX);   // type is useless
         transactionSet.set_proof(responseRaw);
+
+        auto txnPreExecutor = std::make_unique<TransactionPreExecutor>(); // init pre-executor
+        txnPreExecutor->SetReserveTable(transactionList);
         for(const auto& transaction: transactionList) {
             CHECK(epoch == transaction->getEpoch());
             // size always >=1, so ok
@@ -147,7 +150,13 @@ void ClientProxy::receiveFromLocalServer() {
             sha256Helper.execute(&digest);
             transaction->setTransactionID(*reinterpret_cast<tid_size_t*>(digest.data()));
             // enqueue transaction (if it does not abort)
-            //if(TransactionPreExecutor::TransactionPreExecute(transaction)) //pre-execute transaction
+            if(configPtr->ClProxyPreExecuteTransaction()){
+                LOG(INFO) << "pre-execute local transaction set";
+                if(!txnPreExecutor->TransactionPreExecute(transaction))
+                    continue;
+                if(!txnPreExecutor->TrDependencyAnalyse(transaction))
+                    continue;
+            }
             localTxBuffer.pushTransactionToBuffer(transaction);
         }
         // local server generate this information, no need to verify

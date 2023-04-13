@@ -52,11 +52,18 @@ public:
     bool enableAsyncBlockGen() const;
 
     bool enableEarlyReturn() const;
+
+    bool ClProxyPreExecuteTransaction() const;
+
+    bool DivideTransactionBLOCK() const;
+    int DivideTxBlockAmounts() const;
 protected:
     explicit YAMLConfig(const std::string &fileName);
 
 private:
     const YAML::Node data;
+
+
 };
 
 #endif //NEUBLOCKCHAIN_YAML_CONFIG_H
