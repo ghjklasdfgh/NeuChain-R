@@ -44,8 +44,7 @@
 #define YAML_EARLY_RETURN "early_return"
 
 #define YAML_CL_PRO_PRE_EXECUTE_TX "client_proxy_pre_execute_transaction"
-#define YAML_DIVIDE_TX_BLOCK "divide_transaction_block"
-#define YAML_DIVIDE_TX_BLOCK_AMOUNTS "divide_transaction_block_amounts"
+#define YAML_DIVIDE_TX_BATCH "divide_transaction_batch"
 
 YAMLConfig::YAMLConfig(const std::string &fileName)
         :data(YAML::LoadFile(fileName)) {}
@@ -206,10 +205,6 @@ bool YAMLConfig::ClProxyPreExecuteTransaction() const {
     return data[YAML_CL_PRO_PRE_EXECUTE_TX].as<bool>();
 }
 
-bool YAMLConfig::DivideTransactionBLOCK() const{
-    return data[YAML_DIVIDE_TX_BLOCK].as<bool>();
-}
-
-int YAMLConfig::DivideTxBlockAmounts() const {
-    return data[YAML_DIVIDE_TX_BLOCK_AMOUNTS].as<int>();
+bool YAMLConfig::DivideTransactionBatch() const{
+    return data[YAML_DIVIDE_TX_BATCH].as<bool>();
 }

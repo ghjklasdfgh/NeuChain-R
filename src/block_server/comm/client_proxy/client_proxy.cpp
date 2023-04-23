@@ -133,9 +133,8 @@ void ClientProxy::receiveFromLocalServer() {
         transactionSet.set_epoch(epoch);
         transactionSet.set_type(comm::TransactionsWithProof_Type_TX);   // type is useless
         transactionSet.set_proof(responseRaw);
-
-        auto txnPreExecutor = std::make_unique<TransactionPreExecutor>(); // init pre-executor
-        txnPreExecutor->SetReserveTable(transactionList);
+        auto txnPreExecutor = std::make_unique<TransactionPreExecutor>();
+        auto preReserveTableFlag = txnPreExecutor->SetReserveTable(transactionList);
         for(const auto& transaction: transactionList) {
             CHECK(epoch == transaction->getEpoch());
             // size always >=1, so ok
@@ -154,7 +153,7 @@ void ClientProxy::receiveFromLocalServer() {
                 LOG(INFO) << "pre-execute local transaction set";
                 if(!txnPreExecutor->TransactionPreExecute(transaction))
                     continue;
-                if(!txnPreExecutor->TrDependencyAnalyse(transaction))
+                if(preReserveTableFlag && !txnPreExecutor->TrDependencyAnalyse(transaction))
                     continue;
             }
             localTxBuffer.pushTransactionToBuffer(transaction);

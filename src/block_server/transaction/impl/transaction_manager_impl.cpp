@@ -9,6 +9,7 @@
 #include "common/timer.h"
 #include "common/yaml_config.h"
 #include "glog/logging.h"
+#include "block_server/coordinator/divide_batch_coordinator.h"
 
 TransactionManagerImpl::~TransactionManagerImpl() = default;
 
@@ -24,6 +25,8 @@ void TransactionManagerImpl::run() {
     // to process with epoch=i, we first must get the txs.
     epoch_size_t currentEpoch = processingEpoch;
     std::unique_ptr<std::vector<Transaction*>> trWrapper;
+    YAMLConfig* yamlConfig = YAMLConfig::getInstance();
+    std::unique_ptr<DivideBatchCoordinator> divideBatchCoordinator = std::make_unique<DivideBatchCoordinator>();
     // we REMOVE the ConsumeTimeCalculator here since the process does not cost much
     while(!finishSignal) {
         auto& currentEpochTxQueue = epochTxBuffer[currentEpoch];
@@ -32,6 +35,15 @@ void TransactionManagerImpl::run() {
             // merge it into currentEpochTrWrapper
             for(auto* tx: *trWrapper) {
                 currentEpochTxQueue.enqueue(tx);
+            }
+            // divide batch(if true)
+            if(yamlConfig->DivideTransactionBatch()){
+                auto divideBatchWrapper = divideBatchCoordinator->DivideTransactionBatch(std::move(trWrapper));
+                while(!divideBatchWrapper->empty()){
+                    sendTransactionHandle(std::move(divideBatchWrapper->front()));
+                    divideBatchWrapper->pop();
+                }
+                continue;
             }
             sendTransactionHandle(std::move(trWrapper));
         }

@@ -159,7 +159,7 @@ if ((NOT LEVELDB_INCLUDE_PATH) OR (NOT LEVELDB_LIB))
 endif ()
 include_directories(${LEVELDB_INCLUDE_PATH})
 
-ADD_LIBRARY(aria_protobuf ${PROTO_HEADER} ${PROTO_SRC} include/block_server/worker/transaction_pre_executor.h include/block_server/coordinator/divide_block_coordinator.h)
+ADD_LIBRARY(aria_protobuf ${PROTO_HEADER} ${PROTO_SRC} include/block_server/worker/transaction_pre_executor.h include/block_server/coordinator/divide_batch_coordinator.h include/block_server/worker/transaction_pre_reserve_table.h)
 
 # common file
 FILE(GLOB SRC_COMMON_DATA_STRUCTURE
