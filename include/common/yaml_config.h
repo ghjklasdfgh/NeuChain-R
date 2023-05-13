@@ -56,6 +56,8 @@ public:
     bool ClProxyPreExecuteTransaction() const;
 
     bool DivideTransactionBatch() const;
+
+    bool JudgeTransactionCausality() const;
 protected:
     explicit YAMLConfig(const std::string &fileName);
 

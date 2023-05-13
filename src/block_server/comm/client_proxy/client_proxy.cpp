@@ -133,8 +133,9 @@ void ClientProxy::receiveFromLocalServer() {
         transactionSet.set_epoch(epoch);
         transactionSet.set_type(comm::TransactionsWithProof_Type_TX);   // type is useless
         transactionSet.set_proof(responseRaw);
-        auto txnPreExecutor = std::make_unique<TransactionPreExecutor>();
-        auto preReserveTableFlag = txnPreExecutor->SetReserveTable(transactionList);
+        auto txnPreExecutor = std::make_unique<TransactionPreExecutor>(); //start transactionPre
+        auto preReserveTableFlag = txnPreExecutor->SetReserveTable(transactionList); //if pre-execute is true,set txn reserve table
+        auto preTrCausality = txnPreExecutor->SetTrCausality(transactionList); // if pre-execute and judge causation are true set txn causality
         for(const auto& transaction: transactionList) {
             CHECK(epoch == transaction->getEpoch());
             // size always >=1, so ok
@@ -153,6 +154,11 @@ void ClientProxy::receiveFromLocalServer() {
                 LOG(INFO) << "pre-execute local transaction set";
                 if(!txnPreExecutor->TransactionPreExecute(transaction))
                     continue;
+                //use transactional causation
+                if(configPtr->JudgeTransactionCausality() && preTrCausality)
+                    if(!txnPreExecutor->JudgeTrCausality(transaction))
+                        continue;
+                //analyse transactional write and read set
                 if(preReserveTableFlag && !txnPreExecutor->TrDependencyAnalyse(transaction))
                     continue;
             }
