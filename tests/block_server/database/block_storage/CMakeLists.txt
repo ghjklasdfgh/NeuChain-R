@@ -8,7 +8,7 @@ ADD_EXECUTABLE(
         block_server_test
         block_server_test.cpp
         ${SRC_CLIENT_PROXY_MOCK}
-)
+        ../../../../include/block_server/worker/net_topology_manager.h ../../../../src/block_server/worker/net_topology_manager.cpp)
 
 TARGET_LINK_LIBRARIES(
         db_storage_test
