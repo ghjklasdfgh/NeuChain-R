@@ -13,7 +13,7 @@
 class KVRWSet;
 class TransactionPayload;
 
-enum class TransactionResult { COMMIT, PENDING, ABORT, ABORT_NO_RETRY};
+enum class TransactionResult { COMMIT, PENDING, ABORT, ABORT_NO_RETRY, ABORT_NO_PRE};
 
 class Transaction {
 public:

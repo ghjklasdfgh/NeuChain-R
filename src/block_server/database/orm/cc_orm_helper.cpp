@@ -42,10 +42,6 @@ AriaORM::ORMQuery *AriaORM::CCORMHelper::newQuery(const std::string &tableName) 
 }
 
 AriaORM::ORMInsert *AriaORM::CCORMHelper::newInsert(const std::string &tableName) {
-    if (readOnly) {
-        LOG(ERROR) << "try to invoke a rw chaincode with method read-only!";
-        CHECK(false);
-    }
     std::unique_ptr<AriaORM::InsertImpl> insert = std::make_unique<AriaORM::InsertImpl>(tableName, storage, kvRWSet);
     insertList.push_back(std::move(insert));
     return insertList.back().get();
@@ -53,7 +49,7 @@ AriaORM::ORMInsert *AriaORM::CCORMHelper::newInsert(const std::string &tableName
 
 bool AriaORM::CCORMHelper::execute() {
     if (readOnly) {
-        return false;
+        return true;
     }
     return storage->bufferUpdates(tid, kvRWSet, tableList);
 }

@@ -202,14 +202,14 @@ bool YAMLConfig::enableEarlyReturn() const {
     return data[YAML_EARLY_RETURN].as<bool>();
 }
 
-bool YAMLConfig::ClProxyPreExecuteTransaction() const {
+bool YAMLConfig::clProxyPreExecuteTransaction() const {
     return data[YAML_CL_PRO_PRE_EXECUTE_TX].as<bool>();
 }
 
-bool YAMLConfig::DivideTransactionBatch() const{
+bool YAMLConfig::divideTransactionBatch() const{
     return data[YAML_DIVIDE_TX_BATCH].as<bool>();
 }
 
-bool YAMLConfig::JudgeTransactionCausality() const {
+bool YAMLConfig::judgeTransactionCausality() const {
     return data[YAML_JUDGE_TX_CAUSALITY].as<bool>();;
 }

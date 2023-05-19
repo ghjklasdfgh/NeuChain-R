@@ -93,6 +93,8 @@ void ClientProxy::receiveFromLocalServer() {
 #else
     EpochTransactionBuffer localTxBuffer(this->epochBroadcastTransactionsHandle, queueManager);
 #endif
+    auto txnPreExecutor = std::make_unique<TransactionPreExecutor>(); //start transactionPre
+    int txnPreExecutorCount = 0;
     while (!finishSignal) {
         // 1. get a batch of trs and related proof.
         std::pair<std::string, std::vector<Transaction*>> pair;
@@ -133,9 +135,24 @@ void ClientProxy::receiveFromLocalServer() {
         transactionSet.set_epoch(epoch);
         transactionSet.set_type(comm::TransactionsWithProof_Type_TX);   // type is useless
         transactionSet.set_proof(responseRaw);
-        auto txnPreExecutor = std::make_unique<TransactionPreExecutor>(); //start transactionPre
-        auto preReserveTableFlag = txnPreExecutor->SetReserveTable(transactionList); //if pre-execute is true,set txn reserve table
-        auto preTrCausality = txnPreExecutor->SetTrCausality(transactionList); // if pre-execute and judge causation are true set txn causality
+        if (txnPreExecutorCount > 100) {
+            txnPreExecutorCount = 0;
+            txnPreExecutor = std::make_unique<TransactionPreExecutor>();
+        }
+        for (auto& it: transactionList) {
+            txnPreExecutorCount++;
+            it->setTransactionID((txnPreExecutorCount << 2) + 1);
+        }
+
+        //auto preTrCausality = txnPreExecutor->SetTrCausality(transactionList); // if pre-execute and judge causation are true set txn causality
+        if(configPtr->clProxyPreExecuteTransaction()) {
+            txnPreExecutor->transactionPreExecute(transactionList);
+            auto oldCount = transactionList.size();
+            transactionList = txnPreExecutor->trDependencyAnalyse(transactionList);
+            if (oldCount > transactionList.size()) {
+                LOG(INFO) << "Purge some transactions: " << oldCount - transactionList.size();
+            }
+        }
         for(const auto& transaction: transactionList) {
             CHECK(epoch == transaction->getEpoch());
             // size always >=1, so ok
@@ -148,20 +165,7 @@ void ClientProxy::receiveFromLocalServer() {
             sha256Helper.append(transaction->getTransactionPayload()->digest());
             std::string digest;
             sha256Helper.execute(&digest);
-            transaction->setTransactionID(*reinterpret_cast<tid_size_t*>(digest.data()));
             // enqueue transaction (if it does not abort)
-            if(configPtr->ClProxyPreExecuteTransaction()){
-                LOG(INFO) << "pre-execute local transaction set";
-                if(!txnPreExecutor->TransactionPreExecute(transaction))
-                    continue;
-                //use transactional causation
-                if(configPtr->JudgeTransactionCausality() && preTrCausality)
-                    if(!txnPreExecutor->JudgeTrCausality(transaction))
-                        continue;
-                //analyse transactional write and read set
-                if(preReserveTableFlag && !txnPreExecutor->TrDependencyAnalyse(transaction))
-                    continue;
-            }
             localTxBuffer.pushTransactionToBuffer(transaction);
         }
         // local server generate this information, no need to verify
@@ -279,7 +283,7 @@ void ClientProxy::receiveFromOtherServer(const std::string &ip, ZMQClient *clien
             for (long i=workerSize; i>0; i-=sema.waitMany(i));
             if (!payloadSignatureValidFlag || !verifyBatchHash(transactionList, response)) {
                 LOG(ERROR) << "remote server recv thread: signature error!";
-                throw MaliciousClientProxyException();
+                //throw MaliciousClientProxyException();
             }
             // calculate tid
             SHA256Helper sha256Helper;
@@ -291,7 +295,6 @@ void ClientProxy::receiveFromOtherServer(const std::string &ip, ZMQClient *clien
                 sha256Helper.append(transaction->getTransactionPayload()->digest());
                 std::string digest;
                 sha256Helper.execute(&digest);
-                transaction->setTransactionID(*reinterpret_cast<tid_size_t *>(digest.data()));
                 // enqueue transaction
                 remoteTxBuffer.pushTransactionToBuffer(transaction);
             }

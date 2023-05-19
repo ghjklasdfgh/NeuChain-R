@@ -53,11 +53,11 @@ public:
 
     bool enableEarlyReturn() const;
 
-    bool ClProxyPreExecuteTransaction() const;
+    bool clProxyPreExecuteTransaction() const;
 
-    bool DivideTransactionBatch() const;
+    bool divideTransactionBatch() const;
 
-    bool JudgeTransactionCausality() const;
+    bool judgeTransactionCausality() const;
 protected:
     explicit YAMLConfig(const std::string &fileName);
 

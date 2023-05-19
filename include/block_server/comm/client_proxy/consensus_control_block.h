@@ -295,6 +295,7 @@ protected:
     void maliciousTarget(const std::string& targetId, epoch_size_t epoch) {
         // make sure we have locked proxiesTimeoutMutex
         LOG(WARNING) << "Marking target " << targetId << " malicious since epoch: " << epoch;
+        CHECK(false);
         auto& targetCB = proxiesTimeout[targetId];
         targetCB.isValid = false;
         targetCB.firstInvalidEpoch = epoch;

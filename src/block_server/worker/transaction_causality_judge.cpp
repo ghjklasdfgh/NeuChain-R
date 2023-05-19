@@ -18,7 +18,7 @@ bool TransactionCausalityJudge::txnCausalityJudge(Transaction* txn) {
 void TransactionCausalityJudge::SetTxnCausality(const std::vector<Transaction *> &transactionList) {
     //self-define txn causality by txn features
     auto* configPtr = YAMLConfig::getInstance();
-    if(configPtr->JudgeTransactionCausality()){
+    if(configPtr->judgeTransactionCausality()){
         for(auto txn:transactionList){
             auto tmpID = txn->getTransactionID();
             std::vector<Transaction*> causalityTxn;
