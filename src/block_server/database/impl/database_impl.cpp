@@ -48,6 +48,7 @@ bool DatabaseImpl::commitUpdate(tid_size_t tid) {
                           table->getField(0)->getColumnName(),
                           table->getField(1)->getColumnName());
     }
+    CHECK(rwSetBuffer.contains(tid)) << "tid:" << tid;
     // then, update writes
     for(const KVWrite& kvWrite: rwSetBuffer[tid]->writes()) {
         if (kvWrite.is_delete()) {
