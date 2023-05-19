@@ -94,7 +94,9 @@ void ClientProxy::receiveFromLocalServer() {
     EpochTransactionBuffer localTxBuffer(this->epochBroadcastTransactionsHandle, queueManager);
 #endif
     auto txnPreExecutor = std::make_unique<TransactionPreExecutor>(); //start transactionPre
+    auto preExecuteFlag = configPtr->clProxyPreExecuteTransaction();
     int txnPreExecutorCount = 0;
+    unsigned long preExecuteAbortCount = 0;
     while (!finishSignal) {
         // 1. get a batch of trs and related proof.
         std::pair<std::string, std::vector<Transaction*>> pair;
@@ -135,9 +137,11 @@ void ClientProxy::receiveFromLocalServer() {
         transactionSet.set_epoch(epoch);
         transactionSet.set_type(comm::TransactionsWithProof_Type_TX);   // type is useless
         transactionSet.set_proof(responseRaw);
-        if (txnPreExecutorCount > 100) {
-            txnPreExecutorCount = 0;
-            txnPreExecutor = std::make_unique<TransactionPreExecutor>();
+        if (preExecuteFlag) {
+            if (txnPreExecutorCount > 1000) {
+                txnPreExecutorCount = 0;
+                txnPreExecutor = std::make_unique<TransactionPreExecutor>();
+            }
         }
         for (auto& it: transactionList) {
             txnPreExecutorCount++;
@@ -145,14 +149,17 @@ void ClientProxy::receiveFromLocalServer() {
         }
 
         //auto preTrCausality = txnPreExecutor->SetTrCausality(transactionList); // if pre-execute and judge causation are true set txn causality
-        if(configPtr->clProxyPreExecuteTransaction()) {
+        if (preExecuteFlag) {
             txnPreExecutor->transactionPreExecute(transactionList);
             auto oldCount = transactionList.size();
             transactionList = txnPreExecutor->trDependencyAnalyse(transactionList);
             if (oldCount > transactionList.size()) {
-                LOG(INFO) << "Purge some transactions: " << oldCount - transactionList.size();
+                preExecuteAbortCount +=oldCount - transactionList.size();
+                //LOG(INFO) << "Purge some transactions: " << oldCount - transactionList.size();
             }
+            LOG(INFO)<< "Pre-execute abort tx count: " <<preExecuteAbortCount;
         }
+
         for(const auto& transaction: transactionList) {
             CHECK(epoch == transaction->getEpoch());
             // size always >=1, so ok
@@ -178,6 +185,7 @@ void ClientProxy::receiveFromLocalServer() {
         // broadcast to all block servers
         localServer->sendReply(transactionSet.SerializeAsString());
     }
+
 }
 
 void ClientProxy::receiveFromOtherServer(const std::string &ip, ZMQClient *client) {
