@@ -10,6 +10,7 @@
 #include "common/concurrent_queue/blocking_mpmc_queue.h"
 #include "common/concurrent_queue/blocking_concurrent_queue.hpp"
 #include "common/hash_map.h"
+#include "block_server/coordinator/divide_batch_coordinator.h"
 #include <queue>
 #include <unordered_map>
 
@@ -44,6 +45,14 @@ private:
 
     BlockingMPMCQueue<Transaction*> broadcastTransactions;
     std::queue<Transaction*> processedTransaction;
+
+    std::vector<Transaction *> trWrapper;
+    epoch_size_t logicalEpoch = 1;
+    std::unique_ptr<DivideBatchCoordinator> divideBatchCoordinator = std::make_unique<DivideBatchCoordinator>();
+    std::mutex mutex_;
+    BlockingMPMCQueue<std::vector<Transaction *>> abc;
+    std::unique_ptr<std::vector<Transaction *>> efg;
+    bool divide;
 };
 
 

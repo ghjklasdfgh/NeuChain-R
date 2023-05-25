@@ -14,6 +14,6 @@
 class DivideBatchCoordinator{
 public:
     ~DivideBatchCoordinator() = default;
-    static std::unique_ptr<std::queue<std::unique_ptr<std::vector<Transaction*>>>> DivideTransactionBatch(std::unique_ptr<std::vector<Transaction*>> trWrapper);
+    static std::vector<std::vector<Transaction*>> divideTransactionBatch(const std::vector<Transaction*>& trWrapper);
 protected:
 };

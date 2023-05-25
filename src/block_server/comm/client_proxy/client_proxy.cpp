@@ -104,6 +104,28 @@ void ClientProxy::receiveFromLocalServer() {
         // 1.1 get response data
         auto& responseRaw = pair.first;
         auto& transactionList = pair.second;
+        if (preExecuteFlag) {
+            if (txnPreExecutorCount > 1000) {
+                txnPreExecutorCount = 0;
+                txnPreExecutor = std::make_unique<TransactionPreExecutor>();
+            }
+        }
+        for (auto& it: transactionList) {
+            txnPreExecutorCount++;
+            it->setTransactionID((txnPreExecutorCount << 2) + 1);
+        }
+
+        //auto preTrCausality = txnPreExecutor->SetTrCausality(transactionList); // if pre-execute and judge causation are true set txn causality
+        if (preExecuteFlag) {
+            txnPreExecutor->transactionPreExecute(transactionList);
+            auto oldCount = transactionList.size();
+            transactionList = txnPreExecutor->trDependencyAnalyse(transactionList);
+            if (oldCount > transactionList.size()) {
+                preExecuteAbortCount += oldCount - transactionList.size();
+                //LOG(INFO) << "Purge some transactions: " << oldCount - transactionList.size();
+            }
+            LOG(INFO)<< "Pre-execute aborted tx count: " <<preExecuteAbortCount;
+        }
         comm::EpochResponse response;
         response.ParseFromString(responseRaw);
         // 2. check if current local epoch is over, broadcast to other server.
@@ -137,28 +159,7 @@ void ClientProxy::receiveFromLocalServer() {
         transactionSet.set_epoch(epoch);
         transactionSet.set_type(comm::TransactionsWithProof_Type_TX);   // type is useless
         transactionSet.set_proof(responseRaw);
-        if (preExecuteFlag) {
-            if (txnPreExecutorCount > 1000) {
-                txnPreExecutorCount = 0;
-                txnPreExecutor = std::make_unique<TransactionPreExecutor>();
-            }
-        }
-        for (auto& it: transactionList) {
-            txnPreExecutorCount++;
-            it->setTransactionID((txnPreExecutorCount << 2) + 1);
-        }
 
-        //auto preTrCausality = txnPreExecutor->SetTrCausality(transactionList); // if pre-execute and judge causation are true set txn causality
-        if (preExecuteFlag) {
-            txnPreExecutor->transactionPreExecute(transactionList);
-            auto oldCount = transactionList.size();
-            transactionList = txnPreExecutor->trDependencyAnalyse(transactionList);
-            if (oldCount > transactionList.size()) {
-                preExecuteAbortCount +=oldCount - transactionList.size();
-                //LOG(INFO) << "Purge some transactions: " << oldCount - transactionList.size();
-            }
-            LOG(INFO)<< "Pre-execute abort tx count: " <<preExecuteAbortCount;
-        }
 
         for(const auto& transaction: transactionList) {
             CHECK(epoch == transaction->getEpoch());
@@ -289,10 +290,10 @@ void ClientProxy::receiveFromOtherServer(const std::string &ip, ZMQClient *clien
 
             // wait for all transaction is deserialized
             for (long i=workerSize; i>0; i-=sema.waitMany(i));
-            if (!payloadSignatureValidFlag || !verifyBatchHash(transactionList, response)) {
+            /*if (!payloadSignatureValidFlag || !verifyBatchHash(transactionList, response)) {
                 LOG(ERROR) << "remote server recv thread: signature error!";
                 //throw MaliciousClientProxyException();
-            }
+            }*/
             // calculate tid
             SHA256Helper sha256Helper;
             for (const auto &transaction :transactionList) {

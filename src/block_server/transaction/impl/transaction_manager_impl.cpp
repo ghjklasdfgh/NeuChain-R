@@ -24,33 +24,23 @@ void TransactionManagerImpl::run() {
     pthread_setname_np(pthread_self(), "tx_mgr");
     // to process with epoch=i, we first must get the txs.
     epoch_size_t currentEpoch = processingEpoch;
-    std::unique_ptr<std::vector<Transaction*>> trWrapper;
-    YAMLConfig* yamlConfig = YAMLConfig::getInstance();
-    std::unique_ptr<DivideBatchCoordinator> divideBatchCoordinator = std::make_unique<DivideBatchCoordinator>();
+    std::unique_ptr<std::vector<Transaction *>> trWrapper;
     // we REMOVE the ConsumeTimeCalculator here since the process does not cost much
-    while(!finishSignal) {
-        auto& currentEpochTxQueue = epochTxBuffer[currentEpoch];
+    while (!finishSignal) {
+        auto &currentEpochTxQueue = epochTxBuffer[currentEpoch];
         // get all epoch = i transaction
-        while(trWrapper = commModule->getTransaction(currentEpoch, TR_MGR_GET_BATCH_MAX_SIZE, 1), trWrapper!= nullptr) {
+        while (trWrapper = commModule->getTransaction(currentEpoch, TR_MGR_GET_BATCH_MAX_SIZE, 1), trWrapper != nullptr) {
             // merge it into currentEpochTrWrapper
-            for(auto* tx: *trWrapper) {
+            for (auto *tx: *trWrapper) {
                 currentEpochTxQueue.enqueue(tx);
             }
             // divide batch(if true)
-            if(yamlConfig->DivideTransactionBatch()){
-                auto divideBatchWrapper = divideBatchCoordinator->DivideTransactionBatch(std::move(trWrapper));
-                while(!divideBatchWrapper->empty()){
-                    sendTransactionHandle(std::move(divideBatchWrapper->front()));
-                    divideBatchWrapper->pop();
-                }
-                continue;
-            }
             sendTransactionHandle(std::move(trWrapper));
         }
         currentEpoch++;
         // for reusing mode, we must wait after we transferred curr=i+1, until proc=i is finished
         if (reusingAbortTransaction) {
-            epochFinishedSignal.wait([&]()->bool {
+            epochFinishedSignal.wait([&]() -> bool {
                 return processingEpoch + 1 >= currentEpoch;
             });
             if (reuseTxWrapper) {

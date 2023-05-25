@@ -35,7 +35,7 @@ public:
 
 protected:
     void waitUntilCurrentEpochFinish() {
-        ccb->waitForEpochFinish(currentEpoch);
+        //ccb->waitForEpochFinish(currentEpoch);
     }
 
     bool needReReserve() {

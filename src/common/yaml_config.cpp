@@ -206,7 +206,7 @@ bool YAMLConfig::clProxyPreExecuteTransaction() const {
     return data[YAML_CL_PRO_PRE_EXECUTE_TX].as<bool>();
 }
 
-bool YAMLConfig::divideTransactionBatch() const{
+bool YAMLConfig::divideTransactionBatch() const {
     return data[YAML_DIVIDE_TX_BATCH].as<bool>();
 }
 

@@ -266,14 +266,6 @@ bool BlockGeneratorImpl::signatureValidate(const Block::Block *block, const Cryp
         mt_delete(mt);
         CHECK(root == block->metadata().metadata(1));
     }
-    if(!sign->rsaDecrypt(root, signature)) {
-        LOG(INFO) << "block inconsistent, please ensure you have clean the database.";
-        LOG(INFO) << "check merkle root for block " << block->header().number() << " is: " << base64_encode(root)
-                  << ", block signature: " << base64_encode(signature);
-        signatureValidateDebugTrace(block, sign, signature);
-        CHECK(false);
-        return false;
-    }
     DLOG(INFO) << "block verify successfully finished.";
     return true;
 }

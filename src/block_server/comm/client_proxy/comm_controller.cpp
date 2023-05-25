@@ -9,15 +9,58 @@
 
 CommController::CommController(epoch_size_t startWithEpoch, ClientProxy* clientProxy)
         :clientProxy(clientProxy) {
-    clientProxy->epochBroadcastTransactionsHandle = [this] (Transaction* tx) {
-        broadcastTransactions.push(tx);
-    };
+    divide = YAMLConfig::getInstance()->divideTransactionBatch();
+    auto preExecute = YAMLConfig::getInstance()->clProxyPreExecuteTransaction();
+    LOG(INFO) << "divide mode: " << divide;
+    LOG(INFO) << "pre-execute mode: " << preExecute;
+    logicalEpoch = 1;
+    if (!divide) {
+        clientProxy->epochBroadcastTransactionsHandle = [this] (Transaction* tx) {
+            broadcastTransactions.push(tx);
+        };
+    } else {
+        clientProxy->epochBroadcastTransactionsHandle = [this] (Transaction* tx) {
+            std::unique_lock<std::mutex> lock(mutex_);
+            if (trWrapper.empty()) {
+                trWrapper.push_back(tx);
+                return;
+            }
+            if (tx->getEpoch() == trWrapper.front()->getEpoch()) {
+                trWrapper.push_back(tx);
+                return;
+            }
+            auto divideBatchWrapper = divideBatchCoordinator->divideTransactionBatch(trWrapper);
+            trWrapper.clear();
+            for (auto &item : divideBatchWrapper) {
+                if (item.empty()) {
+                    continue;
+                }
+                DLOG(INFO) << "item size: " << item.size();
+                for (auto txn: item) {
+                    //LOG(INFO) << "transactionID: " << txn->getTransactionID();
+                    txn->setEpoch(logicalEpoch);
+                }
+                abc.push(std::move(item));
+                logicalEpoch++;
+            }
+        };
+    }
     clientProxy->startService();
 }
 
 CommController::~CommController() = default;
 
 std::unique_ptr<std::vector<Transaction*>> CommController::getTransaction(epoch_size_t epoch, uint32_t maxSize, uint32_t minSize) {
+    if (divide) {
+        if (efg == nullptr) {
+            efg = std::make_unique<std::vector<Transaction*>>();
+            abc.pop(*efg);
+        }
+        if (efg->front()->getEpoch() == epoch) {
+            return std::move(efg);
+        }
+        return nullptr;
+    }
     // 0. check if we already gave all trs in _epoch
     if(processedTransaction.empty()) {
         // 1. all trs in _epoch has not finished
@@ -35,8 +78,8 @@ std::unique_ptr<std::vector<Transaction*>> CommController::getTransaction(epoch_
         return nullptr;
     }
     // create new tr wrapper and reserve size.
-    auto trWrapper = std::make_unique<std::vector<Transaction*>>();
-    trWrapper->reserve(maxSize);
+    auto trWrapper1 = std::make_unique<std::vector<Transaction*>>();
+    trWrapper1->reserve(maxSize);
     // deal with condition 1
     // 1.1 we have emptied processedTransaction queue but still not / just collect all trs
     // 1.2 we have collected all trs in _epoch and queue is not empty
@@ -45,25 +88,25 @@ std::unique_ptr<std::vector<Transaction*>> CommController::getTransaction(epoch_
     // 1.1.2 greater than maxSize, return
     // 1.1.3 less than minSize, block wait
     // the loop condition is 1.1.2
-    while(trWrapper->size() < maxSize) {
+    while(trWrapper1->size() < maxSize) {
         Transaction* transaction = processedTransaction.front();
         // 1.2
         if(transaction->getEpoch() != epoch) {
             break;
         }
         processedTransaction.pop();
-        trWrapper->push_back(transaction);
+        trWrapper1->push_back(transaction);
         addingTxQueue.enqueue(transaction);
         if(processedTransaction.empty()) {
             // 1.1.1
-            if(trWrapper->size() > minSize) {
+            if(trWrapper1->size() > minSize) {
                 break;
             }
             // 1.1.3
             transferTransaction();
         }
     }
-    return trWrapper;
+    return trWrapper1;
 }
 
 void CommController::transferTransaction() {
