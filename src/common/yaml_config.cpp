@@ -45,6 +45,7 @@
 
 #define YAML_CL_PRO_PRE_EXECUTE_TX "client_proxy_pre_execute_transaction"
 #define YAML_DIVIDE_TX_BATCH "divide_transaction_batch"
+#define YAML_DIVIDE_BATCH_COUNT "divide_batch_count"
 #define YAML_JUDGE_TX_CAUSALITY "judge_transaction_causality"
 
 YAMLConfig::YAMLConfig(const std::string &fileName)
@@ -212,4 +213,8 @@ bool YAMLConfig::divideTransactionBatch() const {
 
 bool YAMLConfig::judgeTransactionCausality() const {
     return data[YAML_JUDGE_TX_CAUSALITY].as<bool>();;
+}
+
+int YAMLConfig::divideBatchCount() const {
+    return data[YAML_DIVIDE_BATCH_COUNT].as<int>();
 }

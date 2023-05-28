@@ -11,7 +11,8 @@ CommController::CommController(epoch_size_t startWithEpoch, ClientProxy* clientP
         :clientProxy(clientProxy) {
     divide = YAMLConfig::getInstance()->divideTransactionBatch();
     auto preExecute = YAMLConfig::getInstance()->clProxyPreExecuteTransaction();
-    LOG(INFO) << "divide mode: " << divide;
+    auto divideCount = YAMLConfig::getInstance()->divideBatchCount();
+    LOG(INFO) << "divide mode: " << divide << " divide count: " << divideCount;
     LOG(INFO) << "pre-execute mode: " << preExecute;
     logicalEpoch = 1;
     if (!divide) {

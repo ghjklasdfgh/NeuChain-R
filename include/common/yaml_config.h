@@ -57,6 +57,8 @@ public:
 
     bool divideTransactionBatch() const;
 
+    int divideBatchCount() const;
+
     bool judgeTransactionCausality() const;
 protected:
     explicit YAMLConfig(const std::string &fileName);

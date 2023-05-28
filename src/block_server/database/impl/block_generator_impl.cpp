@@ -209,6 +209,7 @@ bool BlockGeneratorImpl::generateBlockHeader(Block::Block *block) const {
 
 #include "common/payload/mock_utils.h"
 #include "kv_rwset.pb.h"
+#include "common/yaml_config.h"
 #include <set>
 /*
  * Debug only, trace block difference.
@@ -265,6 +266,16 @@ bool BlockGeneratorImpl::signatureValidate(const Block::Block *block, const Cryp
         CHECK(mt_get_root(mt, reinterpret_cast<uint8_t *>(root.data())) == MT_SUCCESS);
         mt_delete(mt);
         CHECK(root == block->metadata().metadata(1));
+    }
+    if (!YAMLConfig::getInstance()->divideTransactionBatch()) {
+        if(!sign->rsaDecrypt(root, signature)) {
+            LOG(INFO) << "block inconsistent, please ensure you have clean the database.";
+            LOG(INFO) << "check merkle root for block " << block->header().number() << " is: " << base64_encode(root)
+                      << ", block signature: " << base64_encode(signature);
+            signatureValidateDebugTrace(block, sign, signature);
+            CHECK(false);
+            return false;
+        }
     }
     DLOG(INFO) << "block verify successfully finished.";
     return true;
